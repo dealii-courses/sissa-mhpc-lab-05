@@ -52,9 +52,8 @@
 #include <iostream>
 
 // Forward declare the tester class
-class PoissonTester1D;
-class PoissonTester2D;
-class PoissonTester3D;
+template <typename Integral>
+class PoissonTester;
 
 using namespace dealii;
 
@@ -108,10 +107,8 @@ protected:
 
   ParsedConvergenceTable error_table;
 
-
-  friend class Poisson1DTester;
-  friend class Poisson2DTester;
-  friend class Poisson3DTester;
+  template <typename Integral>
+  friend class PoissonTester;
 };
 
 #endif
