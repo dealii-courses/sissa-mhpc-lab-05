@@ -1,4 +1,4 @@
-#  Lab 04 - Template parameters and convergence rates
+#  Lab 05 - Boundary conditions and constraints
 ## Theory and Practice of Finite Elements
 
 **Luca Heltai** <luca.heltai@sissa.it>
@@ -24,88 +24,62 @@ TEST_F(PoissonTester, Exercise3) {
 }
 ```
 
-By the end of this laboratory, you will have a code that solves a Poisson
-problem in arbitrary dimensions, with Lagrangian finite elements of arbitrary
-degree, on different domain types, with different boundary conditions, and
-different functions for the definition of the right hand side, the stiffness
-coefficient, and the forcing term.
+By the end of this laboratory, you will have modified your Poisson code to
+allow also non-homogeneous Neumann boundary conditions on different parts of
+the domain, and you will have added some more options to the solver, enabling
+usage of a direct solver, or of some more sofisticated preconditioners.
 
-The problem will run on successively refined grids, and we will verify
-Bramble-Hilbert lemma for Lagrangian finite element spaces of different order,
-building manufactured solutions using python, and plotting error convergence
-tables using latex, tikz, and pgfplots.
+## Lab-05
 
-The program will build on top of your implementation of Step3, drawing from
-`step-4`, `step-5`, and `step-7`.
+### step-5
 
-## Lab-04 
-
-### step-4
-
-1.  See documentation of step-4 at
-    <https://www.dealii.org/current/doxygen/deal.II/step_4.html>
-
-2.  Compile and run step-4. Examine the source and header files.
-
-3. Copy your implementation of `step-3` from `lab-03` to the files
-`source/poisson.cc`, `include/poisson.h`, and `tests/poisson-tester.cc`, make
-sure you rename correctly all your files and classes to `Poisson`.
-
-4. Add the template parameter `<int dim>` to your `Poisson` class, following
-`step-4` as an example, and make sure that your program runs correctly both in
-2D and in 3D.
-
-5. Add the parameters
+1. Add the parameters
    
-    - `Number of refinement cycles`
-    - `Exact solution expression`
+    - `Neumann boundary condition expression`
+    - `Dirichlet boundary ids`
+    - `Neumann boundary ids`
    
-   and the corresponding member variables (i.e., `n_cycles`,
-   `exact_solution_expression`, and `exact_solution`) and run the Poisson
-   problem again for each refinement cycle with one global refinement, making
-   sure you output the result for each refinement cycle separately in `vtu`
-   format, i.e., if `Output filename` is `poisson_2d`, and `Number of
-   refinement cycles` is 3, you should output
+   and the corresponding member variables to your Poisson problem problem, using 
+   `std::set<dealii::types::boundary_id>` for the last two parameters
 
-     - `poisson_2d_0.vtu`
-     - `poisson_2d_1.vtu`
-     - `poisson_2d_2.vtu`
+2. Modify your implementation of Dirichlet boundary conditions, in order to
+apply the Dirichlet function to all boundary ids indicated in the parameter
+file
 
-    where the solution in `poisson_2d_0.vtu` should have `Number of global
-    refinements` refinements, `poisson_2d_1.vtu` should have `Number of global
-    refinements` +1 refinements, and `poisson_2d_2.vtu` should have `Number of
-    global refinements` +2 refinements.
+3. Implement Neumann boundary conditions, using the function defined above, on
+the ids of the Neumann boundary indicated in the parameter file
 
-6. Add a `ParsedConvergenceTable` object to your `Poisson` class (see
-https://www.dealii.org/current/doxygen/deal.II/classParsedConvergenceTable.html)
-and add its parameters in the subsection `Error table` of the parameter file,
-i.e., in the `Poisson` constructor add the following lines of code:
-```
-this->prm.enter_subsection("Error table");
-error_table.add_parameters(this->prm);
-this->prm.leave_subsection();
-```
+4. Create a function that parses parameters from a string, to be used in the
+testing infrastructure
 
-7. Set the boundary conditions, forcing function, and exact expression to get
-the manufactured solution `u(x,y)=sin(pi*x)*cos(pi*y)`. Add a method
-`compute_error()` to the `Poisson` class, that calls the
-`ParsedConvergenceTable::error_from_exact` method with the `exact_solution`
-function you created above. Make sure you output both the L2 and H1 error in
-text format to a file. Play with the `jupyter` notebook
-`manufactured_solutions.ipynb` to construct non-trivial exact solutions.
+5. Create a few tests that actually solve a Poisson problem on very small grids
+with very simple but non-trivial combinations of boundary conditions, on
+different domains, and verify the correctness of your findings. Examples
+include using globally linear (quadratic) exact functions, with linear
+(quadratic) finite elements, and verify that the error you make is actually
+zero (in this case, global interpolation gives the exact solution, therefore
+the finite element should also provide the exact solution)
 
-8. Add a parameter `Stiffness coefficient expression` and the corresponding
-members to the `Poisson` class, so that the problem you will be solving is 
-$-div(coefficient(x)\nabla u) = f(x)$.
+6. Modify your code to use `AffineConstraints` instead of
+`VectorTools::apply_boundary_values` (see the documentation of `step-6`). Run
+again all tests, and verify that you pass your own checks again with the new
+code
 
-9. Construct a (non-singular!) manufactured solution where `coefficient` is a
-discontinuous function. Notice that the manufactured solution may need a
-discontinuous forcing term on the right hand side, but should not have other
-types of singularities, that is, you need to make sure that
-$coefficient(x)\nabla u$ is continuous, i.e., that $\nabla u$ has a jump
-depending on the jump of the `coefficient`. Output the error tables, and
-comment on the error rates you observe. Do things improve when increasing the
-polynomial order? Why?
+7. Add the parameters:
+    - `Local pre-refinement grid size expression`
+   
+   and the corresponding members. When creating the grid, instead of simply
+   refining globally a fixed number of times (given by the parameter 
+   `Number of global refinements`), refine locally your grid when the function
+   above evaluated in the center of a cell is larger then the actual cell 
+   diameter. Make sure you stop refining locally if the number of local
+   refinement cycles you did is equal to the parameter 
+   `Number of global refinements`. Setting the function above to `0` should produce the same results as before, i.e., a fixed number of global refinements up to `Number of global refinements`.
 
-10. (optional) Use the latex file provided in the latex subdirectory to
-generate professional convergence plots for your solutions.
+8. Make sure you compute correctly the hanging node constraints, and that your
+solver works also with hanging nodes
+
+9. Add a preconditioner to your solver. If you have trilinos installed and it
+is configured inside `deal.II`, use its algebraic multigrid preconditioner (it
+works also with `deal.II` matrices). Otherwise use one of the other available
+preconditioners in the library. Verify that your solver is now faster.
